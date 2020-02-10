@@ -68,6 +68,8 @@ type
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
   Pattern = Regex | Peg
+  Bin = enum
+    biYes, biOnly, biNo, biCount
 
 using pattern: Pattern
 
@@ -88,6 +90,7 @@ var
   linesContext = 0
   colorTheme = "simple"
   newLine = false
+  checkBin = biYes
 
 proc ask(msg: string): string =
   stdout.write(msg)
@@ -202,7 +205,7 @@ proc printBlockLineN(s: string) =
     of "gnu": stdout.styledWrite(styleUnderscore, fgGreen, s)
 
 type
-  SearchInfo = tuple[buf: string, filename: string]
+  #SearchInfo = tuple[buf: string, filename: string]
   MatchInfo = tuple[first: int, last: int;
                     lineBeg: int, lineEnd: int, match: string]
 
@@ -252,88 +255,121 @@ proc printMatch(fileName: string, mi: MatchInfo) =
     if i < lines.len - 1:
       stdout.write("\n")
 
-proc printLinesBefore(si: SearchInfo, curMi: MatchInfo, nLines: int,
+#proc printLinesBefore(si: SearchInfo, curMi: MatchInfo, nLines: int,
+proc printLinesBefore(filename, buf: string, curMi: MatchInfo, nLines: int,
                       replMode=false) =
   # start block: print 'linesBefore' lines before current match `curMi`
-  let first = beforePattern(si.buf, curMi.first-1, nLines)
-  let lines = splitLines(substr(si.buf, first, curMi.first-1))
+  #if nLines == 1:
+  #  lineHeader(filename, curMi.lineBeg, isMatch = true)
+  #  for i in first .. curMi.first-1:
+  #    stdout.write buf[i]
+  #  return
+  let first = beforePattern(buf, curMi.first-1, nLines)
+  let lines = splitLines(substr(buf, first, curMi.first-1))
   let startLine = curMi.lineBeg - lines.len + 1
-  blockHeader(si.filename, curMi.lineBeg, replMode=replMode)
+  blockHeader(filename, curMi.lineBeg, replMode=replMode)
   for i, l in lines:
-    lineHeader(si.filename, startLine + i, isMatch = (i == lines.len - 1))
+    lineHeader(filename, startLine + i, isMatch = (i == lines.len - 1))
     stdout.write(l)
     if i < lines.len - 1:
       stdout.write("\n")
 
-proc printLinesAfter(si: SearchInfo, mi: MatchInfo, nLines: int) =
+proc printLinesAfter(filename, buf: string, mi: MatchInfo, nLines: int) =
   # finish block: print 'linesAfter' lines after match `mi`
-  let s = si.buf
-  let last = afterPattern(s, mi.last+1, nLines)
-  let lines = splitLines(substr(s, mi.last+1, last))
+  let last = afterPattern(buf, mi.last+1, nLines)
+  #let s = si.buf
+  #let last = afterPattern(s, mi.last+1, nLines)
+  #let lines = splitLines(substr(s, mi.last+1, last))
+  #if lines.len == 0: # EOF
+  #  stdout.write("\n")
+  #else:
+  #  stdout.write(lines[0]) # complete the line after match itself
+  #  stdout.write("\n")
+  #  let skipLine =  # workaround posix line ending at the end of file
+  #    if last == s.len-1 and s.len >= 2 and s[^1] == '\l' and s[^2] != '\c': 1
+  #    else: 0
+  #  for i in 1 ..< lines.len - skipLine:
+  #    lineHeader(si.filename, mi.lineEnd + i, isMatch = false)
+  #    stdout.write(lines[i])
+  #    stdout.write("\n")
+  #if linesAfter + linesBefore >= 2 and not newLine: stdout.write("\n")
+
+  #let s = si.buf
+  #if nLines == 1:
+  #  for i in mi.last+1 .. last:
+  #    stdout.write buf[i]
+  #  stdout.write("\n")
+  #  return
+
+  let lines = splitLines(substr(buf, mi.last+1, last))
   if lines.len == 0: # EOF
     stdout.write("\n")
   else:
     stdout.write(lines[0]) # complete the line after match itself
     stdout.write("\n")
     let skipLine =  # workaround posix line ending at the end of file
-      if last == s.len-1 and s.len >= 2 and s[^1] == '\l' and s[^2] != '\c': 1
+      if last == buf.len-1 and buf.len >= 2 and buf[^1] == '\l' and buf[^2] != '\c': 1
       else: 0
     for i in 1 ..< lines.len - skipLine:
-      lineHeader(si.filename, mi.lineEnd + i, isMatch = false)
+      lineHeader(filename, mi.lineEnd + i, isMatch = false)
       stdout.write(lines[i])
       stdout.write("\n")
   if linesAfter + linesBefore >= 2 and not newLine: stdout.write("\n")
 
-proc printBetweenMatches(si: SearchInfo, prevMi: MatchInfo, curMi: MatchInfo) =
+proc printBetweenMatches(filename, buf: string, prevMi: MatchInfo, curMi: MatchInfo) =
+  #for i in prevMi.last+1 .. curMi.first-1:
+  #  stdout.write buf[i]
+  #stdout.write("\n")
+  #return
   # continue block: print between `prevMi` and `curMi`
-  let lines = si.buf.substr(prevMi.last+1, curMi.first-1).splitLines()
+  let lines = buf.substr(prevMi.last+1, curMi.first-1).splitLines()
   stdout.write(lines[0]) # finish the line of previous Match
   if lines.len > 1:
     stdout.write("\n")
     for i in 1 ..< lines.len:
-      lineHeader(si.filename, prevMi.lineEnd + i,
+      lineHeader(filename, prevMi.lineEnd + i,
                  isMatch = (i == lines.len - 1))
       stdout.write(lines[i])
       if i < lines.len - 1:
         stdout.write("\n")
 
-proc printContextBetween(si: SearchInfo, prevMi, curMi: MatchInfo) =
+proc printContextBetween(filename, buf: string, prevMi, curMi: MatchInfo) =
   # print context after previous match prevMi and before current match curMi
   let nLinesBetween = curMi.lineBeg - prevMi.lineEnd
   if nLinesBetween <= linesAfter + linesBefore + 1: # print as 1 block
-    printBetweenMatches(si, prevMi, curMi)
+    printBetweenMatches(filename, buf, prevMi, curMi)
   else: # finalize previous block and then print next block
-    printLinesAfter(si, prevMi, 1+linesAfter)
-    printLinesBefore(si, curMi, linesBefore+1)
+    printLinesAfter(filename, buf, prevMi, 1+linesAfter)
+    printLinesBefore(filename, buf, curMi, linesBefore+1)
 
-proc printReplacement(si: SearchInfo, mi: MatchInfo, repl: string,
+proc printReplacement(filename, buf: string, mi: MatchInfo, repl: string,
                       showRepl: bool, curPos: int,
                       newBuf: string, curLine: int) =
-  printLinesBefore(si, mi, linesBefore+1)
-  printMatch(si.fileName, mi)
-  printLinesAfter(si, mi, 1+linesAfter)
+  printLinesBefore(filename, buf, mi, linesBefore+1)
+  printMatch(fileName, mi)
+  printLinesAfter(filename, buf, mi, 1+linesAfter)
   stdout.flushFile()
   if showRepl:
-    let newSi: SearchInfo = (buf: newBuf, filename: si.filename)
+    #let newSi: SearchInfo = (buf: newBuf, filename: filename)
     let miForNewBuf: MatchInfo =
       (first: newBuf.len, last: newBuf.len,
        lineBeg: curLine, lineEnd: curLine, match: "")
-    printLinesBefore(newSi, miForNewBuf, linesBefore+1, replMode=true)
+    printLinesBefore(filename, newBuf, miForNewBuf, linesBefore+1, replMode=true)
 
     let replLines = countLineBreaks(repl, 0, repl.len-1)
     let miFixLines: MatchInfo =
       (first: mi.first, last: mi.last,
        lineBeg: curLine, lineEnd: curLine + replLines, match: repl)
-    printMatch(si.fileName, miFixLines)
-    printLinesAfter(si, miFixLines, 1+linesAfter)
+    printMatch(fileName, miFixLines)
+    printLinesAfter(filename, buf, miFixLines, 1+linesAfter)
     stdout.flushFile()
 
-proc doReplace(si: SearchInfo, mi: MatchInfo, i: int, r: string;
+proc doReplace(filename, buf: string, mi: MatchInfo, i: int, r: string;
                newBuf: var string, curLine: var int, reallyReplace: var bool) =
-  newBuf.add(si.buf.substr(i, mi.first-1))
-  inc(curLine, countLineBreaks(si.buf, i, mi.first-1))
+  newBuf.add(buf.substr(i, mi.first-1))
+  inc(curLine, countLineBreaks(buf, i, mi.first-1))
   if optConfirm in options:
-    printReplacement(si, mi, r, showRepl=true, i, newBuf, curLine)
+    printReplacement(filename, buf, mi, r, showRepl=true, i, newBuf, curLine)
     case confirm()
     of ceAbort: quit(0)
     of ceYes: reallyReplace = true
@@ -346,7 +382,7 @@ proc doReplace(si: SearchInfo, mi: MatchInfo, i: int, r: string;
       reallyReplace = false
       options.excl(optConfirm)
   else:
-    printReplacement(si, mi, r, showRepl=reallyReplace, i, newBuf, curLine)
+    printReplacement(filename, buf, mi, r, showRepl=reallyReplace, i, newBuf, curLine)
   if reallyReplace:
     newBuf.add(r)
     inc(curLine, countLineBreaks(r, 0, r.len-1))
@@ -354,6 +390,13 @@ proc doReplace(si: SearchInfo, mi: MatchInfo, i: int, r: string;
     newBuf.add(mi.match)
     inc(curLine, countLineBreaks(mi.match, 0, mi.match.len-1))
 
+func detectBin(buffer: string): bool =
+  for i in 0 ..< min(1024, buffer.len):
+    if buffer[i] == '\0':
+      result = true
+      break
+
+#let si: SearchInfo = (buf: "the same", filename: "the old")
 proc processFile(pattern; filename: string; counter: var int, errors: var int) =
   var filenameShown = false
   template beforeHighlight =
@@ -363,6 +406,10 @@ proc processFile(pattern; filename: string; counter: var int, errors: var int) =
       stdout.flushFile()
       filenameShown = true
 
+  if optVerbose in options:
+    printFile(filename)
+    stdout.write("\n")
+    stdout.flushFile()
   var buffer: string
   if optFilenames in options:
     buffer = filename
@@ -373,17 +420,22 @@ proc processFile(pattern; filename: string; counter: var int, errors: var int) =
       printError "Error: cannot open file: " & filename
       inc(errors)
       return
-  if optVerbose in options:
-    printFile(filename)
-    stdout.write("\n")
-    stdout.flushFile()
+  var justCount = false  # allow printing and replacing
+  if checkBin in {biOnly, biCount, biNo}:
+    let isBin = detectBin(buffer)
+    if isBin and checkBin == biNo:
+      return
+    if (not isBin) and checkBin == biOnly:
+      return
+    justCount = (checkBin == biCount and isBin)
   var result: string
 
   if optReplace in options:
     result = newStringOfCap(buffer.len)
 
+  var cnt = 0 # count matches 
   var lineRepl = 1
-  let si: SearchInfo = (buf: buffer, filename: filename)
+  #let si: SearchInfo = (buf: buffer, filename: filename)
   var prevMi, curMi: MatchInfo
   curMi.lineEnd = 1
   var i = 0
@@ -393,8 +445,9 @@ proc processFile(pattern; filename: string; counter: var int, errors: var int) =
   while i < buffer.len:
     let t = findBounds(buffer, pattern, matches, i)
     if t.first < 0 or t.last < t.first:
-      if optReplace notin options and prevMi.lineBeg != 0: # finalize last match
-        printLinesAfter(si, prevMi, 1+linesAfter)
+      if (not justCount) and optReplace notin options and prevMi.lineBeg != 0:
+        # finalize last match
+        printLinesAfter(filename, buffer, prevMi, 1+linesAfter)
         stdout.flushFile()
       break
 
@@ -405,22 +458,27 @@ proc processFile(pattern; filename: string; counter: var int, errors: var int) =
              lineEnd: lineBeg + countLineBreaks(buffer, t.first, t.last),
              match: buffer.substr(t.first, t.last))
     beforeHighlight()
-    inc counter
-    if optReplace notin options:
-      if prevMi.lineBeg == 0: # no previous match, so no previous block to finalize
-        printLinesBefore(si, curMi, linesBefore+1)
+    inc cnt
+    if not justCount:
+      if optReplace notin options:
+        if prevMi.lineBeg == 0:
+          # no previous match, so no previous block to finalize
+          printLinesBefore(filename, buffer, curMi, linesBefore+1)
+        else:
+          printContextBetween(filename, buffer, prevMi, curMi)
+        printMatch(fileName, curMi)
+        stdout.flushFile()
       else:
-        printContextBetween(si, prevMi, curMi)
-      printMatch(si.fileName, curMi)
-      stdout.flushFile()
-    else:
-      let r = replace(curMi.match, pattern, replacement % matches)
-      doReplace(si, curMi, i, r, result, lineRepl, reallyReplace)
+        let r = replace(curMi.match, pattern, replacement % matches)
+        doReplace(filename, buffer, curMi, i, r, result, lineRepl, reallyReplace)
 
     i = t.last+1
     prevMi = curMi
+  counter += cnt
+  if cnt > 0 and justCount:
+    echo "bin file '" & filename & "' has " & $cnt & " matches"
 
-  if optReplace in options:
+  if (not justCount) and optReplace in options:
     result.add(substr(buffer, i))  # finalize new buffer after last match
     var f: File
     if open(f, filename, fmWrite):
@@ -430,6 +488,7 @@ proc processFile(pattern; filename: string; counter: var int, errors: var int) =
       quit "cannot open file for overwriting: " & filename
 
 proc hasRightFileName(path: string): bool =
+  #return true
   let filename = path.lastPathPart
   let ex = filename.splitFile.ext.substr(1) # skip leading '.'
   if extensions.len != 0:
@@ -492,28 +551,79 @@ proc styleInsensitive(s: string): string =
         addx()
     else: addx()
 
+#proc walker(pattern; dir: string; counter: var int) =
+#  for kind, path in walkDir(dir):
+#    case kind
+#    of pcFile:
+#      if extensions.len == 0 or path.hasRightExt(extensions):
+#        processFile(pattern, path, counter)
+#    of pcDir:
+#      if optRecursive in options:
+#        walker(pattern, path, counter)
+#    else: discard
+#  if existsFile(dir): processFile(pattern, dir, counter)
+#
+#proc walker(pattern; dir: string; counter: var int, errors: var int) =
+#  for kind, path in walkDir(dir):
+#    case kind
+#    of pcFile:
+#      if extensions.len == 0: # or path.hasRightExt(extensions):
+#        processFile(pattern, path, counter, errors)
+#    of pcDir:
+#      if optRecursive in options:
+#        walker(pattern, path, counter, errors)
+#    else: discard
+#  if existsFile(dir): processFile(pattern, dir, counter, errors)
+
+#proc walker(pattern; dir: string; counter: var int, errors: var int) =
+#  if existsDir(dir):
+#    for kind, path in walkDir(dir):
+#      case kind
+#      of pcFile:
+#        #if path.hasRightFileName:
+#        #  processFile(pattern, path, counter, errors)
+#        processFile(pattern, path, counter, errors)
+#      of pcLinkToFile:
+#        discard
+#        #if optFollow in options and path.hasRightFileName:
+#        #  processFile(pattern, path, counter, errors)
+#        #  processFile(pattern, path, counter, errors)
+#      of pcDir:
+#        if optRecursive in options and path.hasRightDirectory:
+#          walker(pattern, path, counter, errors)
+#      of pcLinkToDir:
+#        if optFollow in options and optRecursive in options and
+#           path.hasRightDirectory:
+#          walker(pattern, path, counter, errors)
+#  elif existsFile(dir):
+#    processFile(pattern, dir, counter, errors)
+#  else:
+#    printError "Error: no such file or directory: " & dir
+#    inc(errors)
+
 proc walker(pattern; dir: string; counter: var int, errors: var int) =
-  if existsDir(dir):
-    for kind, path in walkDir(dir):
-      case kind
+  for step in tryWalkDir(dir):
+    case step.kind
+    of wsDirOpened: discard
+    of wsNotDir: processFile(pattern, dir, counter, errors)
+    of wsDirNoAccess, wsDirFailure, wsDirNotFound, wsEntryBad, wsInterrupted:
+      printError "Error at '" & step.path & "' " & osErrorMsg(step.code)
+      inc(errors)
+    of wsEntryOk:
+      case step.entryType
       of pcFile:
-        if path.hasRightFileName:
-          processFile(pattern, path, counter, errors)
+        if step.path.hasRightFileName:
+          processFile(pattern, step.path, counter, errors)
       of pcLinkToFile:
-        if optFollow in options and path.hasRightFileName:
-          processFile(pattern, path, counter, errors)
+        if optFollow in options and step.path.hasRightFileName:
+          processFile(pattern, step.path, counter, errors)
       of pcDir:
-        if optRecursive in options and path.hasRightDirectory:
-          walker(pattern, path, counter, errors)
+        if optRecursive in options and step.path.hasRightDirectory:
+          walker(pattern, step.path, counter, errors)
       of pcLinkToDir:
         if optFollow in options and optRecursive in options and
-           path.hasRightDirectory:
-          walker(pattern, path, counter, errors)
-  elif existsFile(dir):
-    processFile(pattern, dir, counter, errors)
-  else:
-    printError "Error: no such file or directory: " & dir
-    inc(errors)
+           step.path.hasRightDirectory:
+          walker(pattern, step.path, counter, errors)
 
 proc reportError(msg: string) =
   printError "Error: " & msg
@@ -603,6 +713,13 @@ for kind, key, val in getopt():
       except ValueError:
         reportError("option --context requires an integer but '" &
                     val & "' was given")
+    of "bin":
+      case val
+      of "no": checkBin = biNo
+      of "yes": checkBin = biYes
+      of "only": checkBin = biOnly
+      of "count": checkBin = biCount
+      else: reportError("unknown value for --bin")
     of "newline", "l": newLine = true
     of "oneline": oneline = true
     of "group", "g": oneline = false
