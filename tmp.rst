@@ -13,6 +13,8 @@ See :literal:`hi \\ mi`.
 
 And this :code:`proc `+`(par)`.
 
+And without `proc `+`(par)`.
+
 .. And tihs :code:`export MYPWD=`mypwd``.
 
 What about few `lines `` of `` some
@@ -33,6 +35,8 @@ See this Bash code: `export VAR=\`pwd\`; \\`.
 .. see `beginning \ `.
 
 Markdown syntax `\`\`\`nim ... \`\`\``.
+
+See `export FOO=\`pwd\``.
 
 .. default-role:: code
 
