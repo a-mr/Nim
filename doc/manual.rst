@@ -1,11 +1,13 @@
-.. default-role:: code
-
 ==========
 Nim Manual
 ==========
 
 :Authors: Andreas Rumpf, Zahary Karadjov
 :Version: |nimversion|
+
+.. role:: nim(code)
+   :language: nim
+.. default-role:: code
 
 .. contents::
 
