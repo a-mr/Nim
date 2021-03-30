@@ -1,10 +1,10 @@
-.. role:: nim(code)
-   :language: nim
-.. default-role:: code
+.. include:: rstcommon.rst
 
 ==========
 Nim Manual
 ==========
+
+Check: `proc f(x) = discard`.
 
 :Authors: Andreas Rumpf, Zahary Karadjov
 :Version: |nimversion|

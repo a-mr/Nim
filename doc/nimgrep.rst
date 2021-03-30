@@ -1,4 +1,4 @@
-.. default-role:: code
+.. include:: rstcommon.rst
 
 =========================
   nimgrep User's manual

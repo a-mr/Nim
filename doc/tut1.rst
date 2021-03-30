@@ -1,4 +1,4 @@
-.. default-role:: nim
+.. include:: rstcommon.rst
 
 =====================
 Nim Tutorial (Part I)
