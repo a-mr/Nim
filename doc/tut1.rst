@@ -1,4 +1,4 @@
-.. default-role:: code
+.. default-role:: nim
 
 =====================
 Nim Tutorial (Part I)
