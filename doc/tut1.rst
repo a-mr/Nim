@@ -410,20 +410,20 @@ Zero-indexed counting has two shortcuts `..<` and `.. ^1`
 (`backward index operator <system.html#^.t%2Cint>`_) to simplify
 counting to one less than the higher index:
 
-.. code-block:: nim
+.. code:: nim
   for i in 0 ..< 10:
     ...  # 0 .. 9
 
 or
 
-.. code-block:: nim
+.. code:: nim
   var s = "some string"
   for i in 0 ..< s.len:
     ...
 
 or
 
-.. code-block:: nim
+.. code:: nim
   var s = "some string"
   for idx, c in s[0 .. ^1]:
     ...
