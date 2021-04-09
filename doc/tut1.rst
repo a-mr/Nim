@@ -1,3 +1,4 @@
+.. default-role:: code
 .. include:: rstcommon.rst
 
 =====================
