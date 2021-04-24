@@ -1,4 +1,7 @@
-.. default-role:: code
+.. role:: nim(code)
+   :language: nim
+
+.. default-role:: nim
 
 ==========================================================
 Nim Enhancement Proposal #1 - Standard Library Style Guide
